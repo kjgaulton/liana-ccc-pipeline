@@ -33,5 +33,5 @@ USER $MAMBA_USER
 # Mount your data here, e.g.: docker run -v $PWD/data:/data ...
 WORKDIR /data
 
-ENTRYPOINT ["/usr/local/bin/_entrypoint.sh", "/pipeline/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/_entrypoint.sh", "bash", "/pipeline/entrypoint.sh"]
 CMD ["--help"]
