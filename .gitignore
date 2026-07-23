@@ -1,0 +1,16 @@
+# R
+.Rhistory
+.RData
+.Rproj.user/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Data & results (don't commit patient/genomic data or run outputs)
+*.rds
+*.h5ad
+data/
+liana_results/
