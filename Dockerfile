@@ -23,6 +23,15 @@ ARG MAMBA_DOCKERFILE_ACTIVATE=1
 ENV RETICULATE_PYTHON=/opt/conda/bin/python
 RUN R -e "remotes::install_github('cellgeni/sceasy', upgrade = 'never')"
 
+# decoupler (a dependency pulled in for LIANA+'s metabolite-estimation step,
+# li.mt.fun.estimate_metalinks) JIT-compiles some functions with numba's
+# on-disk caching (@nb.njit(cache=True)). Numba's cache locator can't find a
+# writable location for the installed package path in some container setups,
+# raising "RuntimeError: cannot cache function ...: no locator available".
+# Pointing NUMBA_CACHE_DIR at a plain writable directory avoids that lookup.
+ENV NUMBA_CACHE_DIR=/tmp/numba_cache
+RUN mkdir -p /tmp/numba_cache && chmod -R 777 /tmp/numba_cache
+
 # ---- Pipeline scripts ----
 # Runs as root (see below) so it can always read/execute these regardless of
 # host-specific permission quirks on some Docker setups (NFS-backed storage,
