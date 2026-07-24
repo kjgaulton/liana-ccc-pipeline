@@ -24,13 +24,18 @@ ENV RETICULATE_PYTHON=/opt/conda/bin/python
 RUN R -e "remotes::install_github('cellgeni/sceasy', upgrade = 'never')"
 
 # ---- Pipeline scripts ----
-COPY --chown=$MAMBA_USER:$MAMBA_USER 01_convert_seurat_to_h5ad.R 02_run_liana_ccc_pipeline.py entrypoint.sh /pipeline/
-
+# Runs as root (see below) so it can always read/execute these regardless of
+# host-specific permission quirks on some Docker setups (NFS-backed storage,
+# SELinux, userns-remap, etc.) that caused "Permission denied" even when the
+# numeric UID appeared to match the file owner.
 USER root
-RUN chmod +x /pipeline/entrypoint.sh
-USER $MAMBA_USER
+COPY 01_convert_seurat_to_h5ad.R 02_run_liana_ccc_pipeline.py entrypoint.sh /pipeline/
+RUN chmod -R 755 /pipeline
 
 # Mount your data here, e.g.: docker run -v $PWD/data:/data ...
+# Do NOT pass --user to `docker run` for this image; entrypoint.sh chowns
+# anything it writes under /data back to match /data's own owner, so you
+# still end up with normal (non-root) file ownership on the host side.
 WORKDIR /data
 
 ENTRYPOINT ["/usr/local/bin/_entrypoint.sh", "bash", "/pipeline/entrypoint.sh"]
