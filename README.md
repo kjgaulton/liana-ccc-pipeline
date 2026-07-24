@@ -78,15 +78,22 @@ python 02_run_liana_ccc_pipeline.py \
 ## Outputs
 
 Written to `liana_results/` (or wherever `--outdir` points):
-- `lr_results.csv` — ligand-receptor interactions per source/target cell type
-  pair, with `magnitude_rank` and `specificity_rank` (lower = stronger/more
-  specific evidence, aggregated across CellPhoneDB, Connectome, log2FC, NATMI,
-  SingleCellSignalR).
-- `metabolite_sensor_results.csv` — same columns, but `source` = metabolite
-  (e.g. Prostaglandin J2) and `target`/`receptor` = the sensing cell type/gene.
-  Metabolite abundance per cell is estimated from production/degradation
-  enzyme expression (MetalinksDB), then treated as the "ligand" in the same
-  rank_aggregate scoring used for LR.
+- `lr_results.csv` / `metabolite_sensor_results.csv` — the full, unfiltered
+  results for every source/target cell-type pair, with `magnitude_rank` and
+  `specificity_rank` (lower = stronger/more specific evidence, aggregated
+  across CellPhoneDB, Connectome, log2FC, NATMI, SingleCellSignalR). In the
+  metabolite file, `source` = metabolite (e.g. Prostaglandin J2) and
+  `target`/`receptor` = the sensing cell type/gene; metabolite abundance per
+  cell is estimated from production/degradation enzyme expression
+  (MetalinksDB), then treated as the "ligand" in the same rank_aggregate
+  scoring used for LR.
+- `lr_results_filtered.csv` / `metabolite_sensor_results_filtered.csv` — the
+  same results restricted to `specificity_rank <= --specificity_cutoff`
+  (default 0.05) and sorted by `magnitude_rank` ascending (strongest first).
+  This is a reasonable starting point for "which of these are worth trusting
+  as bona fide," but see Caveats below — it's not sufficient on its own.
+  Skip this file with `--no_filtered_output`, or pass `--specificity_cutoff
+  1.0` to keep it but effectively disable the filter.
 
 ## Key parameters to check before running
 
@@ -102,6 +109,14 @@ Written to `liana_results/` (or wherever `--outdir` points):
   Python to see all valid options.
 - `--expr_prop` (default 0.1): minimum fraction of cells per group expressing
   a ligand/receptor for an interaction to count as detected.
+- `--min_cells` (default 100): minimum cells per cell-type group required to
+  compute stats for that group at all. Set lower if you have genuinely small
+  but biologically important populations you don't want dropped.
+- `--use_raw`: only pass this if your `.h5ad` actually has `.raw` populated;
+  `01_convert_seurat_to_h5ad.R` writes log-normalized data into `.X`, not
+  `.raw`, so the default is `False`.
+- `--specificity_cutoff` (default 0.05) / `--no_filtered_output`: control the
+  `*_filtered.csv` files described above.
 
 ## Caveats (worth keeping in mind / reporting)
 
@@ -114,10 +129,18 @@ Written to `liana_results/` (or wherever `--outdir` points):
   underlying method columns) is permutation-based.
 - Results depend heavily on cell-type granularity in `--groupby` — coarse
   annotations can mask communication between subtypes.
-- The Dockerfile hasn't been build-tested in this environment (no Docker
-  daemon available here) — the R/Python package names, Dockerfile syntax,
-  YAML, and entrypoint script were all validated individually, but please
-  run the actual `docker build` yourself and flag anything that breaks.
+- The `specificity_rank <= 0.05` + magnitude-sort filter is a floor, not a
+  finish line. Treat computational output as hypothesis-generating: also
+  check consistency across donors/samples (not automated here), spatial or
+  known-anatomy plausibility (dissociated scRNA-seq has no spatial context),
+  and whether hits are dominated by ubiquitously-expressed genes rather than
+  truly cell-type-specific ones.
+- Container permissions: some Docker hosts (NFS-backed storage, SELinux,
+  userns-remap) reject writes to bind-mounted `/data` even when the UID
+  looks like it should match. To sidestep this, the container runs as root
+  internally and `entrypoint.sh` chowns everything under `/data` back to
+  match `/data`'s own owner afterward — don't pass `--user` to `docker run`
+  for this image.
 
 ## Sources consulted
 

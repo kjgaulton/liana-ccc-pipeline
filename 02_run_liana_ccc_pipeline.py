@@ -27,6 +27,18 @@ for the metabolite step you'll need to map MetalinksDB gene symbols to mouse
 orthologs first (see li.resource.get_hcop_orthologs / translate_resource in
 the LIANA+ "Prior Knowledge" tutorial) -- not included here since this run
 is configured for human data.
+
+Filtering to a "bona fide" subset:
+  In addition to the full, unfiltered results (lr_results.csv /
+  metabolite_sensor_results.csv), this script writes a second, filtered +
+  sorted file (lr_results_filtered.csv / metabolite_sensor_results_filtered.csv)
+  keeping only interactions with specificity_rank <= --specificity_cutoff
+  (default 0.05), ordered by magnitude_rank ascending (strongest first).
+  This mirrors the common convention of filtering on specificity, then
+  ranking by magnitude, rather than trusting either statistic alone.
+  Use --no_filtered_output to skip writing the filtered file, or set
+  --specificity_cutoff 1.0 to effectively disable the filter while still
+  getting a magnitude-sorted file.
 """
 
 import argparse
@@ -42,8 +54,11 @@ import liana as li
 DEFAULT_GROUPBY    = "cell_type"   # obs column with cell type / cluster labels
 DEFAULT_LR_RESOURCE = "consensus"  # 'consensus' (human) or 'mouseconsensus' (mouse)
 DEFAULT_EXPR_PROP  = 0.10          # min fraction of cells expressing L/R per group
-DEFAULT_MIN_CELLS  = 5
+DEFAULT_MIN_CELLS  = 100           # min cells per group; 100 is conservative for large atlases
+                                   # (LIANA's own default is 5, which is low for datasets this size)
 DEFAULT_N_PERMS    = 1000
+DEFAULT_SPECIFICITY_CUTOFF = 0.05  # keep interactions with specificity_rank <= this value
+DEFAULT_WRITE_FILTERED = True      # also write a specificity-filtered, magnitude-sorted CSV
 DEFAULT_USE_RAW    = False         # sceasy (01_convert_seurat_to_h5ad.R) writes log-normalized
                                    # data straight into .X, not .raw -- set True only if your
                                    # .h5ad has .raw populated with the expression you want to use
@@ -54,7 +69,24 @@ DEFAULT_MET_SOURCES = [
 ]
 
 
-def run_lr_analysis(adata, groupby, resource_name, expr_prop, min_cells, n_perms, use_raw, outdir):
+def filter_and_sort(res_df, specificity_cutoff, specificity_col="specificity_rank", magnitude_col="magnitude_rank"):
+    """Keep interactions with specificity_col <= specificity_cutoff, sorted by
+    magnitude_col ascending (strongest first). Returns None if the expected
+    columns aren't present (e.g. a custom rank_aggregate method subset was
+    used that doesn't produce them) so callers can skip writing the file."""
+    if specificity_col not in res_df.columns or magnitude_col not in res_df.columns:
+        print(
+            f"  [!] '{specificity_col}' and/or '{magnitude_col}' not found in results "
+            f"(columns present: {list(res_df.columns)}) -- skipping filtered output."
+        )
+        return None
+    filtered = res_df[res_df[specificity_col] <= specificity_cutoff].copy()
+    filtered = filtered.sort_values(magnitude_col, ascending=True)
+    return filtered
+
+
+def run_lr_analysis(adata, groupby, resource_name, expr_prop, min_cells, n_perms, use_raw,
+                     specificity_cutoff, write_filtered, outdir):
     print("\n=== [Step A] Ligand-receptor signaling (LIANA+ rank_aggregate) ===")
     li.mt.rank_aggregate(
         adata,
@@ -71,10 +103,22 @@ def run_lr_analysis(adata, groupby, resource_name, expr_prop, min_cells, n_perms
     out_path = os.path.join(outdir, "lr_results.csv")
     lr_res.to_csv(out_path, index=False)
     print(f"Saved LR results ({lr_res.shape[0]} interactions) -> {out_path}")
+
+    if write_filtered:
+        filtered = filter_and_sort(lr_res, specificity_cutoff)
+        if filtered is not None:
+            filt_path = os.path.join(outdir, "lr_results_filtered.csv")
+            filtered.to_csv(filt_path, index=False)
+            print(
+                f"Saved filtered LR results (specificity_rank <= {specificity_cutoff}, "
+                f"sorted by magnitude_rank): {filtered.shape[0]}/{lr_res.shape[0]} interactions -> {filt_path}"
+            )
+
     return lr_res
 
 
-def run_metabolite_sensor_analysis(adata, groupby, biospecimen_location, met_sources, outdir):
+def run_metabolite_sensor_analysis(adata, groupby, biospecimen_location, met_sources,
+                                    specificity_cutoff, write_filtered, outdir):
     print("\n=== [Step B] Metabolite-sensor signaling (MetalinksDB) ===")
 
     print("  Fetching MetalinksDB prior knowledge...")
@@ -151,6 +195,17 @@ def run_metabolite_sensor_analysis(adata, groupby, biospecimen_location, met_sou
     out_path = os.path.join(outdir, "metabolite_sensor_results.csv")
     met_res.to_csv(out_path, index=False)
     print(f"Saved metabolite-sensor results ({met_res.shape[0]} interactions) -> {out_path}")
+
+    if write_filtered:
+        filtered = filter_and_sort(met_res, specificity_cutoff)
+        if filtered is not None:
+            filt_path = os.path.join(outdir, "metabolite_sensor_results_filtered.csv")
+            filtered.to_csv(filt_path, index=False)
+            print(
+                f"Saved filtered metabolite-sensor results (specificity_rank <= {specificity_cutoff}, "
+                f"sorted by magnitude_rank): {filtered.shape[0]}/{met_res.shape[0]} interactions -> {filt_path}"
+            )
+
     return met_res, meta
 
 
@@ -164,6 +219,11 @@ def main():
     parser.add_argument("--n_perms", type=int, default=DEFAULT_N_PERMS)
     parser.add_argument("--use_raw", action="store_true", default=DEFAULT_USE_RAW,
                          help="Use adata.raw instead of adata.X (only if adata.raw is populated)")
+    parser.add_argument("--specificity_cutoff", type=float, default=DEFAULT_SPECIFICITY_CUTOFF,
+                         help="Keep interactions with specificity_rank <= this value in the "
+                              "*_filtered.csv output (default 0.05). Set to 1.0 to keep everything.")
+    parser.add_argument("--no_filtered_output", action="store_true",
+                         help="Skip writing the specificity-filtered, magnitude-sorted *_filtered.csv files")
     parser.add_argument("--biospecimen", default=DEFAULT_BIOSPECIMEN, help="MetalinksDB tissue/biofluid filter")
     parser.add_argument("--outdir", default="liana_results")
     parser.add_argument("--skip_lr", action="store_true", help="Skip the ligand-receptor step")
@@ -181,15 +241,19 @@ def main():
         )
     adata.obs[args.groupby] = adata.obs[args.groupby].astype("category")
 
+    write_filtered = not args.no_filtered_output
+
     if not args.skip_lr:
         run_lr_analysis(
             adata, args.groupby, args.resource, args.expr_prop,
-            args.min_cells, args.n_perms, args.use_raw, args.outdir,
+            args.min_cells, args.n_perms, args.use_raw,
+            args.specificity_cutoff, write_filtered, args.outdir,
         )
 
     if not args.skip_metabolite:
         run_metabolite_sensor_analysis(
-            adata, args.groupby, args.biospecimen, DEFAULT_MET_SOURCES, args.outdir,
+            adata, args.groupby, args.biospecimen, DEFAULT_MET_SOURCES,
+            args.specificity_cutoff, write_filtered, args.outdir,
         )
 
     print("\nDone. Results written to:", os.path.abspath(args.outdir))
