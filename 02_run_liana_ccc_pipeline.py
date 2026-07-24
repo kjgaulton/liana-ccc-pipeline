@@ -44,6 +44,9 @@ DEFAULT_LR_RESOURCE = "consensus"  # 'consensus' (human) or 'mouseconsensus' (mo
 DEFAULT_EXPR_PROP  = 0.10          # min fraction of cells expressing L/R per group
 DEFAULT_MIN_CELLS  = 5
 DEFAULT_N_PERMS    = 1000
+DEFAULT_USE_RAW    = False         # sceasy (01_convert_seurat_to_h5ad.R) writes log-normalized
+                                   # data straight into .X, not .raw -- set True only if your
+                                   # .h5ad has .raw populated with the expression you want to use
 DEFAULT_BIOSPECIMEN = "Blood"      # MetalinksDB tissue/biofluid filter (e.g. Blood, Tissue)
 DEFAULT_MET_SOURCES = [
     "CellPhoneDB", "Cellinker", "scConnect",   # metabolite-receptor sub-resources
@@ -51,7 +54,7 @@ DEFAULT_MET_SOURCES = [
 ]
 
 
-def run_lr_analysis(adata, groupby, resource_name, expr_prop, min_cells, n_perms, outdir):
+def run_lr_analysis(adata, groupby, resource_name, expr_prop, min_cells, n_perms, use_raw, outdir):
     print("\n=== [Step A] Ligand-receptor signaling (LIANA+ rank_aggregate) ===")
     li.mt.rank_aggregate(
         adata,
@@ -60,6 +63,7 @@ def run_lr_analysis(adata, groupby, resource_name, expr_prop, min_cells, n_perms
         expr_prop=expr_prop,
         min_cells=min_cells,
         n_perms=n_perms,
+        use_raw=use_raw,
         key_added="liana_lr_res",
         verbose=True,
     )
@@ -158,6 +162,8 @@ def main():
     parser.add_argument("--expr_prop", type=float, default=DEFAULT_EXPR_PROP)
     parser.add_argument("--min_cells", type=int, default=DEFAULT_MIN_CELLS)
     parser.add_argument("--n_perms", type=int, default=DEFAULT_N_PERMS)
+    parser.add_argument("--use_raw", action="store_true", default=DEFAULT_USE_RAW,
+                         help="Use adata.raw instead of adata.X (only if adata.raw is populated)")
     parser.add_argument("--biospecimen", default=DEFAULT_BIOSPECIMEN, help="MetalinksDB tissue/biofluid filter")
     parser.add_argument("--outdir", default="liana_results")
     parser.add_argument("--skip_lr", action="store_true", help="Skip the ligand-receptor step")
@@ -178,7 +184,7 @@ def main():
     if not args.skip_lr:
         run_lr_analysis(
             adata, args.groupby, args.resource, args.expr_prop,
-            args.min_cells, args.n_perms, args.outdir,
+            args.min_cells, args.n_perms, args.use_raw, args.outdir,
         )
 
     if not args.skip_metabolite:
