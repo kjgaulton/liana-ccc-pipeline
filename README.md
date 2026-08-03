@@ -94,6 +94,15 @@ Written to `liana_results/` (or wherever `--outdir` points):
   as bona fide," but see Caveats below — it's not sufficient on its own.
   Skip this file with `--no_filtered_output`, or pass `--specificity_cutoff
   1.0` to keep it but effectively disable the filter.
+- `outgoing_ligand_sets.gmt` / `incoming_receptor_sets.gmt` /
+  `combined_signal_sets.gmt` — per-cell-type gene sets (standard `.gmt`
+  format: `name<TAB>description<TAB>gene1<TAB>gene2...`), one gene set per
+  cell type per file, built from `lr_results_filtered.csv` only (not the
+  metabolite step, since a metabolite name isn't a gene). Outgoing = ligand
+  genes from interactions where that cell type is the source; incoming =
+  receptor genes where it's the target; combined = the union of the two for
+  that cell type. Complex subunits (e.g. `ITGAV_ITGB3`) are split into
+  individual gene symbols. Skip with `--no_gmt_output`.
 
 ## Key parameters to check before running
 
@@ -117,6 +126,8 @@ Written to `liana_results/` (or wherever `--outdir` points):
   `.raw`, so the default is `False`.
 - `--specificity_cutoff` (default 0.05) / `--no_filtered_output`: control the
   `*_filtered.csv` files described above.
+- `--no_gmt_output`: skip the `.gmt` gene-set files (also gated on the same
+  `--specificity_cutoff`).
 
 ## Caveats (worth keeping in mind / reporting)
 
