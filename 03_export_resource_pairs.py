@@ -44,8 +44,11 @@ import liana as li
 DEFAULT_LR_RESOURCE = "consensus"  # 'consensus' (human) or 'mouseconsensus' (mouse)
 DEFAULT_BIOSPECIMEN = "Blood"      # MetalinksDB tissue/biofluid filter (e.g. Blood, Tissue)
 DEFAULT_MET_SOURCES = [
-    "CellPhoneDB", "Cellinker", "scConnect",   # metabolite-receptor sub-resources
-    "recon", "hmr", "rhea", "hmdb",            # production/degradation enzyme sources
+    "CellPhoneDB", "Cellinker", "scConnect", "NeuronChat",  # metabolite-receptor sub-resources
+    "recon", "hmr", "rhea", "hmdb", "Stich",                # production/degradation + broad
+                                                             # chemical-protein sources. NOTE: 'Stich'
+                                                             # (not 'STITCH') is the literal value used
+                                                             # in MetalinksDB's own source column.
 ]
 
 

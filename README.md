@@ -140,6 +140,14 @@ eligible for that specific run.
 - `--biospecimen`: MetalinksDB filter, e.g. `Blood`, `Tissue` — pick what's
   closest to your sample type; run `li.resource.get_metalinks_values()` in
   Python to see all valid options.
+- Metabolite-sensor sources (`DEFAULT_MET_SOURCES` in the script, not yet a
+  CLI flag): `CellPhoneDB`, `Cellinker`, `scConnect`, `NeuronChat` for
+  metabolite-receptor pairs; `recon`, `hmr`, `rhea`, `hmdb`, `Stich` for
+  production/degradation + broad chemical-protein coverage. `Stich` (that
+  spelling, not "STITCH") pulls in STITCH's text-mined/computationally
+  predicted interactions — much broader coverage than the literature-curated
+  sources, but lower per-pair confidence; worth weighting STITCH-only hits
+  more skeptically than hits also supported by a curated source.
 - `--expr_prop` (default 0.1): minimum fraction of cells per group expressing
   a ligand/receptor for an interaction to count as detected.
 - `--min_cells` (default 100): minimum cells per cell-type group required to

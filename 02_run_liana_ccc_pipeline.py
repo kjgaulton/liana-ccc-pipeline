@@ -78,8 +78,18 @@ DEFAULT_USE_RAW    = False         # sceasy (01_convert_seurat_to_h5ad.R) writes
                                    # .h5ad has .raw populated with the expression you want to use
 DEFAULT_BIOSPECIMEN = "Blood"      # MetalinksDB tissue/biofluid filter (e.g. Blood, Tissue)
 DEFAULT_MET_SOURCES = [
-    "CellPhoneDB", "Cellinker", "scConnect",   # metabolite-receptor sub-resources
-    "recon", "hmr", "rhea", "hmdb",            # production/degradation enzyme sources
+    "CellPhoneDB", "Cellinker", "scConnect", "NeuronChat",  # metabolite-receptor sub-resources
+                                                             # (NeuronChat adds neurotransmitter/
+                                                             # neuropeptide-receptor pairs)
+    "recon", "hmr", "rhea", "hmdb", "Stich",                # production/degradation + broad
+                                                             # chemical-protein sources. NOTE: 'Stich'
+                                                             # (not 'STITCH') is the literal value used
+                                                             # in MetalinksDB's own source column -- this
+                                                             # isn't a typo on our part, it's theirs.
+                                                             # STITCH is text-mined/computationally
+                                                             # predicted, not literature-curated, so it
+                                                             # adds much broader but lower-confidence
+                                                             # coverage than the other sources above.
 ]
 
 
