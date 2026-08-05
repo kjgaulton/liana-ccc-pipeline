@@ -1,4 +1,4 @@
-# Cell-cell communication from single cell data 
+# Predicting cell-cell communication from single cell data 
 
 Predicts ligand-receptor and metabolite-sensor signaling from a single-cell
 Seurat object using LIANA+. LIANA+ is Python-only (scverse ecosystem,
