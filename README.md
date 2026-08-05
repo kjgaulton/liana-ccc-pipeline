@@ -38,9 +38,10 @@ docker run --rm -v "$PWD/data:/data" liana-ccc-pipeline \
 docker run --rm -v "$PWD/data:/data" liana-ccc-pipeline \
     analyze --h5ad /data/my_data.h5ad --groupby cell_type --outdir /data/liana_results
 
-# Both steps in one shot
+# Both steps in one shot -- note: <assay> then <celltype_col>, same order as
+# 'convert' above. Both are required; there is no default assay.
 docker run --rm -v "$PWD/data:/data" liana-ccc-pipeline \
-    all /data/my_data.rds /data/my_data.h5ad cell_type --outdir /data/liana_results
+    all /data/my_data.rds /data/my_data.h5ad RNA cell_type --outdir /data/liana_results
 ```
 
 `--outdir` and other flags accepted by `02_run_liana_ccc_pipeline.py` (e.g.

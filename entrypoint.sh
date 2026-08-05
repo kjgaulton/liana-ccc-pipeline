@@ -17,12 +17,14 @@ LIANA+ ligand-receptor + metabolite-sensor CCC pipeline
 Usage:
   docker run -v <host_data_dir>:/data <image> convert <in.rds> <out.h5ad> [assay] [celltype_col]
   docker run -v <host_data_dir>:/data <image> analyze --h5ad <file.h5ad> --groupby <col> [more python args...]
-  docker run -v <host_data_dir>:/data <image> all <in.rds> <out.h5ad> <celltype_col> [more python args...]
+  docker run -v <host_data_dir>:/data <image> all <in.rds> <out.h5ad> <assay> <celltype_col> [more python args...]
 
 Subcommands:
   convert   Seurat .rds -> .h5ad          (runs 01_convert_seurat_to_h5ad.R)
   analyze   LR + metabolite-sensor scoring (runs 02_run_liana_ccc_pipeline.py)
-  all       convert, then analyze, sharing the same celltype/groupby column
+  all       convert, then analyze, sharing the same assay/celltype column.
+            NOTE: <assay> and <celltype_col> are both REQUIRED and in that
+            order (same order as 'convert') -- there is no default assay.
   --help    Show this message
 
 All paths are resolved inside the container, so mount your data directory to
@@ -38,7 +40,7 @@ Examples:
       analyze --h5ad /data/my_data.h5ad --groupby cell_type --outdir /data/liana_results
 
   docker run --rm -v "$PWD/data:/data" liana-ccc-pipeline \
-      all /data/my_data.rds /data/my_data.h5ad cell_type --outdir /data/liana_results
+      all /data/my_data.rds /data/my_data.h5ad RNA cell_type --outdir /data/liana_results
 EOF
 }
 
@@ -72,13 +74,14 @@ case "$cmd" in
     python /pipeline/02_run_liana_ccc_pipeline.py "$@" || status=$?
     ;;
   all)
-    if [[ $# -lt 3 ]]; then
-      echo "Usage: all <input.rds> <output.h5ad> <celltype_col> [extra python args...]" >&2
+    if [[ $# -lt 4 ]]; then
+      echo "Usage: all <input.rds> <output.h5ad> <assay> <celltype_col> [extra python args...]" >&2
+      echo "(same argument order as 'convert' -- assay before celltype_col; no default assay)" >&2
       fix_ownership
       exit 1
     fi
-    input_rds="$1"; output_h5ad="$2"; celltype_col="$3"; shift 3
-    Rscript /pipeline/01_convert_seurat_to_h5ad.R "$input_rds" "$output_h5ad" RNA "$celltype_col" || status=$?
+    input_rds="$1"; output_h5ad="$2"; assay="$3"; celltype_col="$4"; shift 4
+    Rscript /pipeline/01_convert_seurat_to_h5ad.R "$input_rds" "$output_h5ad" "$assay" "$celltype_col" || status=$?
     if [[ $status -eq 0 ]]; then
       python /pipeline/02_run_liana_ccc_pipeline.py --h5ad "$output_h5ad" --groupby "$celltype_col" "$@" || status=$?
     fi
