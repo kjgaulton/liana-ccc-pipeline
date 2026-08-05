@@ -18,6 +18,7 @@ Usage:
   docker run -v <host_data_dir>:/data <image> convert <in.rds> <out.h5ad> [assay] [celltype_col]
   docker run -v <host_data_dir>:/data <image> analyze --h5ad <file.h5ad> --groupby <col> [more python args...]
   docker run -v <host_data_dir>:/data <image> all <in.rds> <out.h5ad> <assay> <celltype_col> [more python args...]
+  docker run -v <host_data_dir>:/data <image> resources [--resource NAME] [--biospecimen LOC] [--outdir DIR]
 
 Subcommands:
   convert   Seurat .rds -> .h5ad          (runs 01_convert_seurat_to_h5ad.R)
@@ -25,12 +26,17 @@ Subcommands:
   all       convert, then analyze, sharing the same assay/celltype column.
             NOTE: <assay> and <celltype_col> are both REQUIRED and in that
             order (same order as 'convert') -- there is no default assay.
+  resources Export the raw LR + metabolite-sensor prior-knowledge databases
+            themselves (no dataset needed) -- runs 03_export_resource_pairs.py
   --help    Show this message
 
 All paths are resolved inside the container, so mount your data directory to
-/data and reference files as /data/<filename>. Do NOT pass --user to `docker
-run` for this image -- it needs to run as root to avoid host-specific
-bind-mount permission issues; output file ownership is fixed up automatically.
+/data and reference files as /data/<filename>. This image runs as root by
+default and fixes output ownership under /data automatically -- no --user
+flag needed on most setups. EXCEPTION: on NFS-backed /data mounts, NFS
+usually enforces root_squash (root gets remapped to `nobody` server-side),
+so pass --user "$(id -u):$(id -g)" instead; that's unaffected by root_squash
+since it's not UID 0.
 
 Examples:
   docker run --rm -v "$PWD/data:/data" liana-ccc-pipeline \
@@ -41,6 +47,9 @@ Examples:
 
   docker run --rm -v "$PWD/data:/data" liana-ccc-pipeline \
       all /data/my_data.rds /data/my_data.h5ad RNA cell_type --outdir /data/liana_results
+
+  docker run --rm -v "$PWD/data:/data" liana-ccc-pipeline \
+      resources --outdir /data/resource_pairs
 EOF
 }
 
@@ -72,6 +81,9 @@ case "$cmd" in
     ;;
   analyze)
     python /pipeline/02_run_liana_ccc_pipeline.py "$@" || status=$?
+    ;;
+  resources)
+    python /pipeline/03_export_resource_pairs.py "$@" || status=$?
     ;;
   all)
     if [[ $# -lt 4 ]]; then

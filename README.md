@@ -16,6 +16,8 @@ Seurat .rds ──(R: sceasy)──> .h5ad ──(Python: liana-py)──> LR re
 - `02_run_liana_ccc_pipeline.py` — runs LIANA+ rank_aggregate for
   ligand-receptor signaling, and LIANA+'s MetalinksDB-based module for
   metabolite-sensor signaling.
+- `03_export_resource_pairs.py` — exports the raw prior-knowledge databases
+  themselves (LR resource + MetalinksDB), independent of any dataset.
 
 ## Run with Docker (recommended)
 
@@ -42,6 +44,10 @@ docker run --rm -v "$PWD/data:/data" liana-ccc-pipeline \
 # 'convert' above. Both are required; there is no default assay.
 docker run --rm -v "$PWD/data:/data" liana-ccc-pipeline \
     all /data/my_data.rds /data/my_data.h5ad RNA cell_type --outdir /data/liana_results
+
+# Export the raw prior-knowledge resources themselves (no dataset needed)
+docker run --rm -v "$PWD/data:/data" liana-ccc-pipeline \
+    resources --outdir /data/resource_pairs
 ```
 
 `--outdir` and other flags accepted by `02_run_liana_ccc_pipeline.py` (e.g.
@@ -74,6 +80,9 @@ python 02_run_liana_ccc_pipeline.py \
     --h5ad my_data.h5ad \
     --groupby cell_type \
     --outdir liana_results/
+
+# Export the raw prior-knowledge resources themselves (no dataset needed)
+python 03_export_resource_pairs.py --outdir resource_pairs/
 ```
 
 ## Outputs
@@ -104,6 +113,20 @@ Written to `liana_results/` (or wherever `--outdir` points):
   receptor genes where it's the target; combined = the union of the two for
   that cell type. Complex subunits (e.g. `ITGAV_ITGB3`) are split into
   individual gene symbols. Skip with `--no_gmt_output`.
+
+`03_export_resource_pairs.py` writes to its own `--outdir` (default
+`resource_pairs/`), independent of a specific run's results:
+- `lr_resource_pairs.csv` — the full LR resource itself (e.g. all 4,624
+  `consensus` pairs), before any expression filtering against your data.
+- `metabolite_receptor_pairs.csv` — MetalinksDB's raw metabolite -> receptor
+  pairs ("lr"-type rows), for the `--biospecimen`/source filters given.
+- `metabolite_production_degradation.csv` — MetalinksDB's enzyme
+  production/degradation pairs ("pd"-type rows) — what the main pipeline
+  uses to estimate metabolite abundance, not receptor interactions.
+
+Match `--resource` / `--biospecimen` to whatever you used in
+`02_run_liana_ccc_pipeline.py` to get an exact record of which pairs were
+eligible for that specific run.
 
 ## Key parameters to check before running
 
@@ -147,12 +170,16 @@ Written to `liana_results/` (or wherever `--outdir` points):
   known-anatomy plausibility (dissociated scRNA-seq has no spatial context),
   and whether hits are dominated by ubiquitously-expressed genes rather than
   truly cell-type-specific ones.
-- Container permissions: some Docker hosts (NFS-backed storage, SELinux,
-  userns-remap) reject writes to bind-mounted `/data` even when the UID
-  looks like it should match. To sidestep this, the container runs as root
-  internally and `entrypoint.sh` chowns everything under `/data` back to
-  match `/data`'s own owner afterward — don't pass `--user` to `docker run`
-  for this image.
+- Container permissions: this image runs as root by default and
+  `entrypoint.sh` chowns everything under `/data` back to match `/data`'s
+  own owner afterward, so no `--user` flag is normally needed. Exception:
+  on NFS-backed `/data` mounts (common on shared lab/HPC storage), the NFS
+  server typically enforces `root_squash`, silently remapping root (UID 0)
+  to `nobody` — root running inside the container doesn't escape this. On
+  those hosts, pass `--user "$(id -u):$(id -g)"` instead; that's unaffected
+  by `root_squash` since it isn't UID 0, and works now that the pipeline
+  scripts are world-readable/executable (`chmod 755`, invoked via `bash`
+  explicitly rather than relying on the exec bit).
 
 ## Sources consulted
 

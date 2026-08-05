@@ -38,13 +38,23 @@ RUN mkdir -p /tmp/numba_cache && chmod -R 777 /tmp/numba_cache
 # SELinux, userns-remap, etc.) that caused "Permission denied" even when the
 # numeric UID appeared to match the file owner.
 USER root
-COPY 01_convert_seurat_to_h5ad.R 02_run_liana_ccc_pipeline.py entrypoint.sh /pipeline/
+COPY 01_convert_seurat_to_h5ad.R 02_run_liana_ccc_pipeline.py 03_export_resource_pairs.py entrypoint.sh /pipeline/
 RUN chmod -R 755 /pipeline
 
 # Mount your data here, e.g.: docker run -v $PWD/data:/data ...
-# Do NOT pass --user to `docker run` for this image; entrypoint.sh chowns
-# anything it writes under /data back to match /data's own owner, so you
-# still end up with normal (non-root) file ownership on the host side.
+# By default this image runs as root and entrypoint.sh chowns anything it
+# writes under /data back to match /data's own owner, so you still end up
+# with normal (non-root) file ownership on the host side -- no --user flag
+# needed on most Docker setups.
+#
+# EXCEPTION: on NFS-backed /data mounts (common on shared lab/HPC storage),
+# the NFS server itself usually enforces root_squash, silently remapping
+# root (UID 0) to `nobody`, who has no write access to your directory --
+# root running *inside* the container doesn't escape this. All pipeline
+# scripts are world-readable/executable (chmod 755, invoked via `bash`
+# explicitly rather than relying on the exec bit), so on NFS-backed mounts,
+# pass --user "$(id -u):$(id -g)" instead: root_squash only affects UID 0,
+# so your own non-root UID writes normally.
 WORKDIR /data
 
 ENTRYPOINT ["/usr/local/bin/_entrypoint.sh", "bash", "/pipeline/entrypoint.sh"]
