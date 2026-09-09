@@ -4,10 +4,6 @@ Predicts ligand-receptor and metabolite-sensor signaling from a single-cell
 Seurat object using LIANA+. LIANA+ is Python-only (scverse ecosystem,
 AnnData/MuData), so a Seurat `.rds` is converted to `.h5ad` first.
 
-```
-Seurat .rds ──(R: sceasy)──> .h5ad ──(Python: liana-py)──> LR results + metabolite-sensor results
-```
-
 ## Files
 
 - `Dockerfile`, `environment.yml`, `entrypoint.sh` — containerized version of
