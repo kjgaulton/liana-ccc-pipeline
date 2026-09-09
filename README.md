@@ -26,8 +26,7 @@ Build once:
 docker build -t liana-ccc-pipeline .
 ```
 This installs R + Seurat + sceasy and Python + liana-py into one image, so
-build time is significant (Seurat compiles several packages) — expect
-15–30 minutes on first build, cached afterward.
+build time is significant (Seurat compiles several packages).
 
 Put your `.rds` file in a local folder, e.g. `./data/my_data.rds`, then:
 
