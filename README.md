@@ -170,18 +170,8 @@ eligible for that specific run.
 - The `specificity_rank <= 0.05` + magnitude-sort filter is a recommendation and are hypothesis-generating.
   Check consistency across donors/samples, spatial or
   known-anatomy plausibility
-- Container permissions: this image runs as root by default and
-  `entrypoint.sh` chowns everything under `/data` back to match `/data`'s
-  own owner afterward, so no `--user` flag is normally needed. Exception:
-  on NFS-backed `/data` mounts (common on shared lab/HPC storage), the NFS
-  server typically enforces `root_squash`, silently remapping root (UID 0)
-  to `nobody` — root running inside the container doesn't escape this. On
-  those hosts, pass `--user "$(id -u):$(id -g)"` instead; that's unaffected
-  by `root_squash` since it isn't UID 0, and works now that the pipeline
-  scripts are world-readable/executable (`chmod 755`, invoked via `bash`
-  explicitly rather than relying on the exec bit).
 
-## Sources consulted
+## Sources
 
 - [LIANA+ steady-state LR inference tutorial](https://liana-py.readthedocs.io/en/latest/notebooks/basic_usage.html)
 - [LIANA+ multi-modal / metabolite-mediated CCC tutorial](https://liana-py.readthedocs.io/en/latest/notebooks/sc_multi.html)
