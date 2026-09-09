@@ -156,7 +156,7 @@ eligible for that specific run.
 - `--no_gmt_output`: skip the `.gmt` gene-set files (also gated on the same
   `--specificity_cutoff`).
 
-## Caveats (worth keeping in mind / reporting)
+## Caveats
 
 - Metabolite abundance is *inferred* from enzyme gene expression via linear
   regression — it is not measured. Treat metabolite-sensor hits as
@@ -167,12 +167,9 @@ eligible for that specific run.
   underlying method columns) is permutation-based.
 - Results depend heavily on cell-type granularity in `--groupby` — coarse
   annotations can mask communication between subtypes.
-- The `specificity_rank <= 0.05` + magnitude-sort filter is a floor, not a
-  finish line. Treat computational output as hypothesis-generating: also
-  check consistency across donors/samples (not automated here), spatial or
-  known-anatomy plausibility (dissociated scRNA-seq has no spatial context),
-  and whether hits are dominated by ubiquitously-expressed genes rather than
-  truly cell-type-specific ones.
+- The `specificity_rank <= 0.05` + magnitude-sort filter is a recommendation and are hypothesis-generating.
+  Check consistency across donors/samples, spatial or
+  known-anatomy plausibility
 - Container permissions: this image runs as root by default and
   `entrypoint.sh` chowns everything under `/data` back to match `/data`'s
   own owner afterward, so no `--user` flag is normally needed. Exception:
